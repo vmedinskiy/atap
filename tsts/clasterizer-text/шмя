@@ -1,0 +1,2 @@
+SELECT user_id  FROM users_hits
+WHERE (TO_DAYS(NOW()) - TO_DAY  S(timestamp ) <= 7) && (url<>'https://music.yandex.ru/feed')
