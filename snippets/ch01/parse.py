@@ -12,10 +12,12 @@ P -> 'in' | 'on'
 PUNCT -> '.'
 """)
 
+
 def parse(sent):
     parser = nltk.ChartParser(grammar)
     tokens = nltk.wordpunct_tokenize(sent)
     return parser.parse(tokens)
+
 
 if __name__ == '__main__':
     for tree in parse("I put the book in the box on the table."):

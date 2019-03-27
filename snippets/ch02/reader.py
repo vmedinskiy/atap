@@ -12,6 +12,7 @@ CAT_PATTERN = r'([a-z_\s]+)/.*'
 DOC_PATTERN = r'(?!\.)[a-z_\s]+/[a-f0-9]+\.json'
 TAGS = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li']
 
+
 class HTMLCorpusReader(CategorizedCorpusReader, CorpusReader):
     """
     A corpus reader for raw HTML documents to enable preprocessing.
@@ -73,6 +74,7 @@ class HTMLCorpusReader(CategorizedCorpusReader, CorpusReader):
         # Create a generator, getting every path and computing filesize
         for path in self.abspaths(fileids):
             yield os.path.getsize(path)
+
 
 class SqliteCorpusReader(object):
 
