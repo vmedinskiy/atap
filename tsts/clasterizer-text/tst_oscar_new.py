@@ -6,12 +6,11 @@ import sys
 import re
 import pymorphy2
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.decomposition import TruncatedSVD
+from datetime import datetime
 from sklearn.base import TransformerMixin
-from sklearn.cluster import KMeans, AffinityPropagation, MiniBatchKMeans, AgglomerativeClustering
+from sklearn.cluster import AgglomerativeClustering
 from sklearn.pipeline import Pipeline
 from functools import wraps
-import matplotlib.pyplot as plt
 
 
 class DenseTransformer(TransformerMixin):
@@ -105,6 +104,7 @@ def learn_and_predict_AgglomerativeClustering(data, num_clasters_for_kMeans):
                                         linkage='complete'))
     ])
     data['tag'] = text_clstz.fit_predict(data['normal_query'])
+    print("{} clusters".format(len(set(data['tag'].tolist()))))
     return data
 
 
@@ -143,26 +143,39 @@ def main():
         lambda x: text_cleaner(x))  # lemmatize only oscars
 
     save_data(only_oscars, data_file_name + '_oscar_normal')  # save lemmatized oscars
+    only_oscars = only_oscars.sort_index()
     # on MOW time oscar was from 03/00 25/02/19 till 07/00 25/02/2019
     # lets assume that time in this table is MOW
-    only_oscars.info()
+    delimited = [only_oscars[:datetime(2019, 2, 25, 2, 59, 59)].copy(deep=True),  # before
+                 only_oscars[datetime(2019, 2, 25, 3, 0, 0):datetime(2019, 2, 25, 6, 59, 59)].copy(
+                     deep=True),  # during
+                 only_oscars[datetime(2019, 2, 25, 7, 0, 0):].copy(deep=True)]  # after
 
-    only_oscars['normal_query'].map(lambda x: count_words(x))
-    save_file(pd.DataFrame(count.most_common()),
-              r'd:\data\oscar_freq.xlsx')  # save frequency of words to excel
+    names_of_periods = {0: 'BEFORE\n\n', 1: 'DURING\n\n', 2: 'AFTER\n\n'}
+    # print info about these datasets
+    for (num, d) in enumerate(delimited):
+        print(names_of_periods[num])
+        d.info()
+        print(d.head())
 
-    # lets try to make Hierarchical clustering
-    data = learn_and_predict_AgglomerativeClustering(only_oscars, num_clasters_for_kMeans)
-    save_data(data.sort_values('tag'), r'D:\data\oscarAgglomerativeClustering')
+    for (num, d) in enumerate(delimited):
+        print(names_of_periods[num])
+        count.clear()
+        fn = names_of_periods[num].strip().lower()
+        d['normal_query'].map(lambda x: count_words(x))
+        save_file(pd.DataFrame(count.most_common()),
+                  r'd:\data\oscar_freq_{}.xlsx'.format(fn))  # save frequency of words to excel
 
-    # most common words in clusters
-    df = data.groupby('tag')['normal_query'].apply(lambda words: ' '.join(words))
-    df = pd.DataFrame(df)
-    df['normal_query'] = df['normal_query'].apply(commons)
+        # lets try to make Hierarchical clustering
+        data = learn_and_predict_AgglomerativeClustering(d, num_clasters_for_kMeans)
+        save_data(data.sort_values('tag'), r'D:\data\oscarAgglomerativeClustering_{}'.format(fn))
 
-    save_data(df, data_file_name + 'Group')
+        # most common words in clusters
+        df = d.groupby('tag')['normal_query'].apply(lambda words: ' '.join(words))
+        df = pd.DataFrame(df)
+        df['normal_query'] = df['normal_query'].apply(commons)
 
-    # silhouette(data)
+        save_data(df, data_file_name + 'Group_{}'.format(fn))
 
 
 if __name__ == '__main__':
