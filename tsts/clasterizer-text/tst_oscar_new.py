@@ -8,7 +8,7 @@ import pymorphy2
 from sklearn.feature_extraction.text import TfidfVectorizer
 from datetime import datetime
 from sklearn.base import TransformerMixin
-from sklearn.cluster import AgglomerativeClustering
+from sklearn.cluster import AgglomerativeClustering, DBSCAN
 from sklearn.pipeline import Pipeline
 from functools import wraps
 
@@ -46,7 +46,7 @@ random_sample = None
 num_clasters_for_kMeans = 20
 engine_for_pd = 'c'
 # engine_for_pd = 'python'
-data_file_name = r'D:\data\oscar_oscar'
+data_file_name = r'D:\data\oscar'
 
 
 def text_cleaner(text):
@@ -94,9 +94,22 @@ def save_data(data, file='oscar2'):
 
 
 @timethis
+def learn_and_predict_DBSCAN(data, *args):
+    text_clstz = Pipeline([
+        ('tfidf', TfidfVectorizer(binary=True)),
+        # ('svd', TruncatedSVD(n_components=100, random_state=123)),
+        # ('to_dense', DenseTransformer()),
+        ('DBSCAN', DBSCAN(eps=0.2, min_samples=5, metric='euclidean'))
+    ])
+    data['tag'] = text_clstz.fit_predict(data['normal_query'])
+    print("{} clusters".format(len(set(data['tag'].tolist()))))
+    return data
+
+
+@timethis
 def learn_and_predict_AgglomerativeClustering(data, num_clasters_for_kMeans):
     text_clstz = Pipeline([
-        ('tfidf', TfidfVectorizer()),
+        ('tfidf', TfidfVectorizer(binary=True)),
         # ('svd', TruncatedSVD(n_components=100, random_state=123)),
         ('to_dense', DenseTransformer()),
         ('afp', AgglomerativeClustering(n_clusters=num_clasters_for_kMeans,
@@ -169,13 +182,22 @@ def main():
         # lets try to make Hierarchical clustering
         data = learn_and_predict_AgglomerativeClustering(d, num_clasters_for_kMeans)
         save_data(data.sort_values('tag'), r'D:\data\oscarAgglomerativeClustering_{}'.format(fn))
-
         # most common words in clusters
-        df = d.groupby('tag')['normal_query'].apply(lambda words: ' '.join(words))
+        df = data.groupby('tag')['normal_query'].apply(lambda words: ' '.join(words))
         df = pd.DataFrame(df)
         df['normal_query'] = df['normal_query'].apply(commons)
 
-        save_data(df, data_file_name + 'Group_{}'.format(fn))
+        save_data(df, data_file_name + 'Agglomerative_Group_{}'.format(fn))
+
+        #also lets try DBSCAN clustering
+        data = learn_and_predict_DBSCAN(d, num_clasters_for_kMeans)
+        save_data(data.sort_values('tag'), r'D:\data\oscarDBSCANClustering_{}'.format(fn))
+        # most common words in clusters
+        df = data.groupby('tag')['normal_query'].apply(lambda words: ' '.join(words))
+        df = pd.DataFrame(df)
+        df['normal_query'] = df['normal_query'].apply(commons)
+
+        save_data(df, data_file_name + 'DBSCAN_Group_{}'.format(fn))
 
 
 if __name__ == '__main__':
